@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"time"
+
+	"log/slog"
 )
 
 const version = "1.0.0"
@@ -17,7 +18,7 @@ type config struct {
 }
 
 type application struct {
-	logger *log.Logger
+	logger *slog.Logger
 	config config
 }
 
@@ -28,7 +29,7 @@ func main() {
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
 
-	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	app := &application{
 		config: cfg,
@@ -40,9 +41,10 @@ func main() {
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
+		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 
-	logger.Printf("starting %s server on port %s", cfg.env, server.Addr)
+	logger.Info("starting server", "addr", server.Addr, "env", cfg.env)
 	err := server.ListenAndServe()
-	logger.Fatal(err)
+	logger.Error(err.Error())
 }
